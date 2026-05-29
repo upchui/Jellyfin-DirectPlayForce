@@ -44,16 +44,18 @@ jobs:
           TAG="${{ github.ref_name }}"
           URL="https://github.com/${REPO}/releases/download/${TAG}/Jellyfin.Plugin.DirectPlayForce.zip"
           TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          echo "Setting sourceUrl: $URL"
           VERSION=$(echo "$TAG" | sed 's/^v//')
-          jq --arg url "$URL" \
-             --arg md5 "${{ steps.checksum.outputs.md5 }}" \
-             --arg ts  "$TS" \
-             --arg ver "$VERSION" \
-             '.[0].versions[0].version   = $ver  |
-              .[0].versions[0].sourceUrl = $url  |
-              .[0].versions[0].checksum  = $md5  |
-              .[0].versions[0].timestamp = $ts' \
+          TARGET_ABI=$(jq -r '.versions[0].targetAbi' meta.json)
+          NEW_ENTRY=$(jq -n \
+            --arg ver "$VERSION" \
+            --arg log "See GitHub release notes." \
+            --arg abi "$TARGET_ABI" \
+            --arg url "$URL" \
+            --arg md5 "${{ steps.checksum.outputs.md5 }}" \
+            --arg ts  "$TS" \
+            '{version: $ver, changelog: $log, targetAbi: $abi, sourceUrl: $url, checksum: $md5, timestamp: $ts}')
+          jq --argjson entry "$NEW_ENTRY" \
+             '.[0].versions = ([$entry] + (.[0].versions | map(select(.version != $entry.version))))' \
             manifest.json > tmp.json && mv tmp.json manifest.json
           cat manifest.json
 
