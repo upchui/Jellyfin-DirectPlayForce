@@ -45,10 +45,13 @@ jobs:
           URL="https://github.com/${REPO}/releases/download/${TAG}/Jellyfin.Plugin.DirectPlayForce.zip"
           TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           echo "Setting sourceUrl: $URL"
+          VERSION=$(echo "$TAG" | sed 's/^v//')
           jq --arg url "$URL" \
              --arg md5 "${{ steps.checksum.outputs.md5 }}" \
              --arg ts  "$TS" \
-             '.[0].versions[0].sourceUrl = $url |
+             --arg ver "$VERSION" \
+             '.[0].versions[0].version   = $ver  |
+              .[0].versions[0].sourceUrl = $url  |
               .[0].versions[0].checksum  = $md5  |
               .[0].versions[0].timestamp = $ts' \
             manifest.json > tmp.json && mv tmp.json manifest.json
@@ -58,10 +61,15 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          cp manifest.json /tmp/manifest_release.json
+          git fetch origin main
+          git checkout main
+          git pull origin main
+          cp /tmp/manifest_release.json manifest.json
           git add manifest.json
           git diff --staged --quiet || \
             git commit -m "ci: update manifest.json for release ${{ github.ref_name }}"
-          git push origin HEAD:main
+          git push origin main
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
