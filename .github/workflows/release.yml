@@ -24,13 +24,6 @@ jobs:
             --output type=local,dest=./dist \
             .
 
-      - name: Read plugin version
-        id: meta
-        run: |
-          VERSION=$(jq -r '.versions[0].version' meta.json)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Plugin version: $VERSION"
-
       - name: Compute MD5 checksum
         id: checksum
         run: |
@@ -45,7 +38,7 @@ jobs:
           URL="https://github.com/${REPO}/releases/download/${TAG}/Jellyfin.Plugin.DirectPlayForce.zip"
           TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           VERSION=$(echo "$TAG" | sed 's/^v//')
-          TARGET_ABI=$(jq -r '.versions[0].targetAbi' meta.json)
+          TARGET_ABI=$(jq -r '.[0].versions[0].targetAbi' manifest.json)
           NEW_ENTRY=$(jq -n \
             --arg ver "$VERSION" \
             --arg log "See GitHub release notes." \
@@ -97,7 +90,7 @@ jobs:
             1. Download `Jellyfin.Plugin.DirectPlayForce.zip` from this release
             2. Extract to your Jellyfin plugins folder:
                ```
-               /config/plugins/DirectPlayForce_${{ steps.meta.outputs.version }}/
+               /config/plugins/DirectPlayForce_${{ github.ref_name }}/
                ├── Jellyfin.Plugin.DirectPlayForce.dll
                └── meta.json
                ```
