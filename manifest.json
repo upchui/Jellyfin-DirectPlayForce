@@ -8,12 +8,12 @@
     "owner": "alex",
     "versions": [
       {
-        "version": "1.0.0.3",
+        "version": "1.0.0.4",
         "changelog": "Complete rewrite: direct play enforcement only. All transcoding logic removed.",
         "targetAbi": "10.9.0.0",
-        "sourceUrl": "https://github.com/upchui/Jellyfin-DirectPlayForce/releases/download/v1.0.0.3/Jellyfin.Plugin.DirectPlayForce.zip",
-        "checksum": "d61e99f1d314bb2103a68621cc4e1278",
-        "timestamp": "2026-05-29T08:44:17Z"
+        "sourceUrl": "https://github.com/upchui/Jellyfin-DirectPlayForce/releases/download/v1.0.0.4/Jellyfin.Plugin.DirectPlayForce.zip",
+        "checksum": "f0fbf05cc466b6935582c560248ae286",
+        "timestamp": "2026-05-29T08:45:17Z"
       }
     ]
   }
