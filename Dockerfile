@@ -30,12 +30,14 @@ RUN dotnet publish \
 # ─── Stage 2: Package ─────────────────────────────────────────────────────────
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS package
 
-RUN apt-get update -qq && apt-get install -y -qq zip
+RUN apt-get update -qq && apt-get install -y -qq zip jq
 
 COPY --from=build /out/Jellyfin.Plugin.DirectPlayForce.dll /plugin/
-COPY meta.json /plugin/
+COPY manifest.json /tmp/manifest.json
 
-RUN mkdir -p /dist && \
+RUN jq '.[0] | {category, guid, name, description, overview, owner}' \
+        /tmp/manifest.json > /plugin/meta.json && \
+    mkdir -p /dist && \
     cd /plugin && \
     zip /dist/Jellyfin.Plugin.DirectPlayForce.zip \
         Jellyfin.Plugin.DirectPlayForce.dll \
