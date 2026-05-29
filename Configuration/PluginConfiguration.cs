@@ -43,4 +43,11 @@ public class DirectPlayRule
 
     /// <summary>Exact DeviceId match. Empty = all device IDs.</summary>
     public string DeviceIdFilter { get; set; } = string.Empty;
+
+    /// <summary>
+    /// When enabled: forces direct play on the first attempt. If the player immediately
+    /// retries (within 30 s, same device + item), the second request is passed through
+    /// to Jellyfin unchanged — allowing its natural transcoding/remux decision.
+    /// </summary>
+    public bool SmartFallback { get; set; } = true;
 }

@@ -130,7 +130,7 @@
             row1.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;';
 
             var tgl = makeToggleCard('🛡️', 'Rule ' + (index + 1),
-                'Force direct play — block all transcoding for this client.', isOn);
+                'Force direct play — all transcoding blocked for this client.', isOn);
             tgl.root.style.cssText = 'flex:1;' + tgl.root.style.cssText;
             (function(idx, cb) {
                 cb.addEventListener('change', function () {
@@ -178,6 +178,21 @@
                 rule.DeviceIdFilter, function (v) { rules[index].DeviceIdFilter = v; }));
             card.appendChild(row2);
 
+            // Row 3: SmartFallback toggle
+            var row3 = document.createElement('div');
+            row3.style.cssText = 'margin-top:10px;';
+            var smartTgl = makeToggleCard(
+                '🔄',
+                'Smart Fallback',
+                'Force direct play on first attempt. If the player immediately retries, let Jellyfin decide (transcode/remux) on the second attempt.',
+                rule.SmartFallback === true
+            );
+            (function(idx, cb) {
+                cb.addEventListener('change', function () { rules[idx].SmartFallback = this.checked; });
+            })(index, smartTgl.checkbox);
+            row3.appendChild(smartTgl.root);
+            card.appendChild(row3);
+
             return card;
         }
 
@@ -214,11 +229,12 @@
 
                     rules = (config.DirectPlayRules || []).map(function (r) {
                         return {
-                            Id:             r.Id             || newGuid(),
-                            IsEnabled:      r.IsEnabled      !== false,
-                            ClientFilter:   r.ClientFilter   || '',
-                            DeviceFilter:   r.DeviceFilter   || '',
-                            DeviceIdFilter: r.DeviceIdFilter || ''
+                            Id:                    r.Id             || newGuid(),
+                            IsEnabled:             r.IsEnabled      !== false,
+                            ClientFilter:          r.ClientFilter   || '',
+                            DeviceFilter:          r.DeviceFilter   || '',
+                            DeviceIdFilter:        r.DeviceIdFilter || '',
+                            SmartFallback: r.SmartFallback === true
                         };
                     });
                     renderRules();
@@ -232,11 +248,12 @@
         // Add rule
         document.getElementById('dpfAddRule').addEventListener('click', function () {
             rules.push({
-                Id:             newGuid(),
-                IsEnabled:      true,
-                ClientFilter:   '',
-                DeviceFilter:   '',
-                DeviceIdFilter: ''
+                Id:                    newGuid(),
+                IsEnabled:             true,
+                ClientFilter:          '',
+                DeviceFilter:          '',
+                DeviceIdFilter:        '',
+                SmartFallback: true
             });
             renderRules();
         });

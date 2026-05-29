@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
@@ -19,6 +20,7 @@ namespace Jellyfin.Plugin.DirectPlayForce.Filters;
 public class DirectPlayForceFilter : IAsyncActionFilter
 {
     private readonly ILogger<DirectPlayForceFilter> _logger;
+    private static readonly ConcurrentDictionary<string, DateTime> _recentlyForcedPlay = new();
 
     /// <summary>Initializes a new instance of <see cref="DirectPlayForceFilter"/>.</summary>
     public DirectPlayForceFilter(ILogger<DirectPlayForceFilter> logger)
@@ -78,19 +80,42 @@ public class DirectPlayForceFilter : IAsyncActionFilter
             return;
         }
 
+        // SmartFallback: detect retry within 3 s for the same device + item
+        var itemId = ExtractItemId(request.Path);
+        var retryKey = $"{deviceId}:{itemId}";
+        var isFallbackRetry = false;
+
+        if (matchingRule.SmartFallback && itemId is not null
+            && _recentlyForcedPlay.TryGetValue(retryKey, out var forcedAt)
+            && DateTime.UtcNow - forcedAt < TimeSpan.FromSeconds(3))
+        {
+            isFallbackRetry = true;
+            _recentlyForcedPlay.TryRemove(retryKey, out _);
+            _logger.LogInformation(
+                "DirectPlayForce: Client='{Client}' Device='{Device}' item={Item} — retry detected, passing through to Jellyfin",
+                clientName, deviceName, itemId);
+        }
+
         // Execute the action, then patch the response
         var executedContext = await next().ConfigureAwait(false);
 
         if (executedContext.Exception is not null && !executedContext.ExceptionHandled)
             return;
 
-        ForceDirectPlay(executedContext, clientName, deviceName);
+        if (isFallbackRetry)
+            return;
+
+        ForceDirectPlay(executedContext, matchingRule, clientName, deviceName);
+
+        if (matchingRule.SmartFallback && itemId is not null)
+            _recentlyForcedPlay[retryKey] = DateTime.UtcNow;
     }
 
     // ── Patch PlaybackInfoResponse to force direct play ───────────────────
 
     private void ForceDirectPlay(
         Microsoft.AspNetCore.Mvc.Filters.ActionExecutedContext execCtx,
+        DirectPlayRule rule,
         string clientName,
         string deviceName)
     {
@@ -105,17 +130,25 @@ public class DirectPlayForceFilter : IAsyncActionFilter
         foreach (var ms in mediaSources)
         {
             var t = ms.GetType();
-            // Allow direct play and direct stream
             t.GetProperty("SupportsDirectPlay")?.SetValue(ms, true);
             t.GetProperty("SupportsDirectStream")?.SetValue(ms, true);
-            // Clear the transcoding URL so the client has no transcoded stream to fall back to
             t.GetProperty("TranscodingUrl")?.SetValue(ms, string.Empty);
             patched++;
         }
 
         _logger.LogInformation(
-            "DirectPlayForce: Direct play enforced for Client='{Client}' Device='{Device}' ({Count} media source(s))",
+            "DirectPlayForce: Client='{Client}' Device='{Device}' — {Patched} source(s) forced to direct play",
             clientName, deviceName, patched);
+    }
+
+    private static string? ExtractItemId(PathString path)
+    {
+        var value = path.Value;
+        if (value is null) return null;
+        var end = value.LastIndexOf("/PlaybackInfo", StringComparison.OrdinalIgnoreCase);
+        if (end < 0) return null;
+        var start = value.LastIndexOf('/', end - 1);
+        return (start >= 0 && start < end) ? value[(start + 1)..end] : null;
     }
 
     // ── Client filter matching ────────────────────────────────────────────
