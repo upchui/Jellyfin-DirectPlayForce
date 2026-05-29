@@ -8,6 +8,14 @@
     "owner": "alex",
     "versions": [
       {
+        "version": "1.0.0.5",
+        "changelog": "See GitHub release notes.",
+        "targetAbi": "10.9.0.0",
+        "sourceUrl": "https://github.com/upchui/Jellyfin-DirectPlayForce/releases/download/v1.0.0.5/Jellyfin.Plugin.DirectPlayForce.zip",
+        "checksum": "d5dedfdf36cd7a8b39c7888e517f10f2",
+        "timestamp": "2026-05-29T08:50:07Z"
+      },
+      {
         "version": "1.0.0.4",
         "changelog": "Complete rewrite: direct play enforcement only. All transcoding logic removed.",
         "targetAbi": "10.9.0.0",
