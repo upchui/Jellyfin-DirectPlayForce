@@ -1,0 +1,18 @@
+{
+  "category": "General",
+  "guid": "3f7a9c2e-b1d4-4e8a-a5f6-2c0d1e9b3f7a",
+  "name": "DirectPlayForce",
+  "description": "Forces direct play for configured clients, blocking all server-side transcoding.",
+  "overview": "Solves EAC3 / Dolby Digital Plus stuttering on NVIDIA Shield / Android TV by forcing the server to deliver media files as-is via direct play — no FFmpeg, no re-encoding, zero quality loss.",
+  "owner": "alex",
+  "versions": [
+    {
+      "version": "2.0.0.0",
+      "changelog": "Complete rewrite: direct play enforcement only. All transcoding logic removed.",
+      "targetAbi": "10.9.0.0",
+      "sourceUrl": "",
+      "checksum": "",
+      "timestamp": "2026-05-29T00:00:00Z"
+    }
+  ]
+}

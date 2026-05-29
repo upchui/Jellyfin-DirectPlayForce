@@ -1,0 +1,97 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build plugin ZIP (Docker)
+        run: |
+          DOCKER_BUILDKIT=1 docker build \
+            --output type=local,dest=./dist \
+            .
+
+      - name: Read plugin version
+        id: meta
+        run: |
+          VERSION=$(jq -r '.versions[0].version' meta.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Plugin version: $VERSION"
+
+      - name: Compute MD5 checksum
+        id: checksum
+        run: |
+          MD5=$(md5sum dist/Jellyfin.Plugin.DirectPlayForce.zip | cut -d' ' -f1)
+          echo "md5=$MD5" >> $GITHUB_OUTPUT
+          echo "MD5: $MD5"
+
+      - name: Update manifest.json with release info
+        run: |
+          REPO="${{ github.repository }}"
+          TAG="${{ github.ref_name }}"
+          URL="https://github.com/${REPO}/releases/download/${TAG}/Jellyfin.Plugin.DirectPlayForce.zip"
+          TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "Setting sourceUrl: $URL"
+          jq --arg url "$URL" \
+             --arg md5 "${{ steps.checksum.outputs.md5 }}" \
+             --arg ts  "$TS" \
+             '.[0].versions[0].sourceUrl = $url |
+              .[0].versions[0].checksum  = $md5  |
+              .[0].versions[0].timestamp = $ts' \
+            manifest.json > tmp.json && mv tmp.json manifest.json
+          cat manifest.json
+
+      - name: Commit updated manifest.json to main
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add manifest.json
+          git diff --staged --quiet || \
+            git commit -m "ci: update manifest.json for release ${{ github.ref_name }}"
+          git push origin HEAD:main
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "DirectPlayForce ${{ github.ref_name }}"
+          body: |
+            ## DirectPlayForce ${{ github.ref_name }}
+
+            Forces direct play for configured Jellyfin clients — no transcoding, no FFmpeg, zero quality loss.
+
+            ### Install via Plugin Repository (recommended)
+
+            1. Open Jellyfin Dashboard → **Plugins** → **Repositories**
+            2. Add the following URL:
+               ```
+               https://raw.githubusercontent.com/${{ github.repository }}/main/manifest.json
+               ```
+            3. Go to **Catalog**, find **DirectPlayForce**, and install it
+            4. Restart Jellyfin
+
+            ### Manual Installation
+
+            1. Download `Jellyfin.Plugin.DirectPlayForce.zip` from this release
+            2. Extract to your Jellyfin plugins folder:
+               ```
+               /config/plugins/DirectPlayForce_${{ steps.meta.outputs.version }}/
+               ├── Jellyfin.Plugin.DirectPlayForce.dll
+               └── meta.json
+               ```
+            3. Restart Jellyfin
+          files: |
+            dist/Jellyfin.Plugin.DirectPlayForce.zip
+            manifest.json

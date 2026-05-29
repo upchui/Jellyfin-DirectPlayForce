@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>DirectPlayForce</title>
+</head>
+<body>
+<div id="DirectPlayForceConfigPage"
+     data-role="page"
+     class="page type-interior pluginConfigurationPage">
+    <div data-role="content">
+        <div class="content-primary">
+
+            <form id="dpfConfigForm">
+
+                <!-- Header -->
+                <div class="sectionTitleContainer" style="margin-bottom:.5em">
+                    <h2 style="font-size:1.3em;margin:0">DirectPlayForce</h2>
+                    <p style="font-size:.82em;opacity:.55;margin:.4em 0 0">
+                        Forces direct play for configured clients — no transcoding, no FFmpeg, zero quality loss.
+                    </p>
+                </div>
+
+                <div id="dpfGeneralSection" style="margin-bottom:1.75em"></div>
+
+                <!-- Rules -->
+                <div class="sectionTitleContainer">
+                    <h3 class="sectionTitle" style="font-size:1em">Direct Play Rules</h3>
+                </div>
+                <p style="font-size:.82em;opacity:.55;margin-bottom:.8em">
+                    Clients matching these rules always receive direct play. Transcoding is blocked.
+                    Leave all filters empty to match all clients.
+                </p>
+
+                <div id="dpfRuleList"
+                     style="display:flex;flex-direction:column;gap:12px;margin-bottom:1em">
+                </div>
+
+                <button type="button" id="dpfAddRule"
+                        style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.2);
+                               border-radius:5px;color:inherit;padding:9px 20px;cursor:pointer;
+                               font-size:.9em;margin-bottom:1.75em">
+                    + Add rule
+                </button>
+
+                <button is="emby-button" type="submit"
+                        class="raised button-submit block emby-button">
+                    <span>Save</span>
+                </button>
+
+            </form>
+
+        </div>
+    </div>
+
+    <script type="text/javascript">
+    (function () {
+        var PLUGIN_ID = '3f7a9c2e-b1d4-4e8a-a5f6-2c0d1e9b3f7a';
+
+        var rules = [];
+        var masterEnabled = null;
+
+        // Styles
+        var CARD_OFF = 'display:flex;align-items:center;padding:14px 16px;border-radius:6px;cursor:pointer;margin:0;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);';
+        var CARD_ON  = 'display:flex;align-items:center;padding:14px 16px;border-radius:6px;cursor:pointer;margin:0;background:rgba(0,164,220,.09);border:1px solid rgba(0,164,220,.45);';
+        var ICON_OFF = 'width:42px;height:42px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;margin-right:14px;background:rgba(255,255,255,.08);';
+        var ICON_ON  = 'width:42px;height:42px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;margin-right:14px;background:rgba(0,164,220,.22);';
+        var TICK_OFF = 'width:22px;height:22px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;margin-left:16px;border:2px solid rgba(255,255,255,.22);color:transparent;';
+        var TICK_ON  = 'width:22px;height:22px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;margin-left:16px;background:#00a4dc;border:2px solid #00a4dc;color:#fff;';
+        var INPUT_S  = 'background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.2);border-radius:4px;color:inherit;padding:6px 10px;font-size:.88em;min-width:0;width:100%;box-sizing:border-box;';
+
+        // Toggle card factory
+        function makeToggleCard(icon, title, subtitle, isOn) {
+            var card = document.createElement('label');
+            card.style.cssText = isOn ? CARD_ON : CARD_OFF;
+
+            var cb = document.createElement('input');
+            cb.type = 'checkbox'; cb.checked = isOn;
+            cb.style.cssText = 'position:absolute;opacity:0;width:0;height:0;pointer-events:none;';
+
+            var iconEl = document.createElement('div');
+            iconEl.style.cssText = isOn ? ICON_ON : ICON_OFF;
+            iconEl.textContent = icon;
+
+            var info = document.createElement('div');
+            info.style.cssText = 'flex:1;min-width:0;';
+
+            var nameEl = document.createElement('div');
+            nameEl.style.cssText = 'font-size:1em;font-weight:500;';
+            nameEl.textContent = title;
+            info.appendChild(nameEl);
+
+            if (subtitle) {
+                var sub = document.createElement('div');
+                sub.style.cssText = 'font-size:.78em;opacity:.5;margin-top:2px;';
+                sub.textContent = subtitle;
+                info.appendChild(sub);
+            }
+
+            var tick = document.createElement('div');
+            tick.style.cssText = isOn ? TICK_ON : TICK_OFF;
+            tick.textContent = isOn ? '✓' : '';
+
+            cb.addEventListener('change', function () {
+                var on = this.checked;
+                card.style.cssText   = on ? CARD_ON  : CARD_OFF;
+                iconEl.style.cssText = on ? ICON_ON  : ICON_OFF;
+                tick.style.cssText   = on ? TICK_ON  : TICK_OFF;
+                tick.textContent     = on ? '✓' : '';
+            });
+
+            card.appendChild(cb);
+            card.appendChild(iconEl);
+            card.appendChild(info);
+            card.appendChild(tick);
+
+            return { root: card, checkbox: cb };
+        }
+
+        // Rule card renderer
+        function renderCard(rule, index) {
+            var isOn = rule.IsEnabled !== false;
+            var card = document.createElement('div');
+            card.style.cssText = 'padding:16px;border-radius:8px;' +
+                'background:rgba(0,164,220,.04);border:1px solid rgba(0,164,220,' + (isOn ? '.25' : '.1') + ');' +
+                (isOn ? '' : 'opacity:.6;');
+
+            // Row 1: toggle + delete
+            var row1 = document.createElement('div');
+            row1.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;';
+
+            var tgl = makeToggleCard('🛡️', 'Rule ' + (index + 1),
+                'Force direct play — block all transcoding for this client.', isOn);
+            tgl.root.style.cssText = 'flex:1;' + tgl.root.style.cssText;
+            (function(idx, cb) {
+                cb.addEventListener('change', function () {
+                    rules[idx].IsEnabled = this.checked;
+                    card.style.opacity = this.checked ? '1' : '.6';
+                });
+            })(index, tgl.checkbox);
+
+            var delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.textContent = '✕';
+            delBtn.style.cssText = 'background:rgba(255,80,80,.15);border:1px solid rgba(255,80,80,.3);' +
+                'border-radius:4px;color:inherit;padding:6px 12px;cursor:pointer;font-size:.85em;margin-left:10px;flex-shrink:0;';
+            delBtn.addEventListener('click', function () {
+                rules.splice(index, 1);
+                renderRules();
+            });
+
+            row1.appendChild(tgl.root);
+            row1.appendChild(delBtn);
+            card.appendChild(row1);
+
+            // Row 2: filter fields
+            var row2 = document.createElement('div');
+            row2.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;';
+
+            function makeField(label, ph, val, onchange) {
+                var wrap = document.createElement('div');
+                var lbl = document.createElement('div');
+                lbl.style.cssText = 'font-size:.75em;opacity:.55;margin-bottom:4px;';
+                lbl.textContent = label;
+                var inp = document.createElement('input');
+                inp.type = 'text'; inp.placeholder = ph; inp.value = val || '';
+                inp.style.cssText = INPUT_S;
+                inp.addEventListener('input', function () { onchange(this.value); });
+                wrap.appendChild(lbl); wrap.appendChild(inp);
+                return wrap;
+            }
+
+            row2.appendChild(makeField('Client Filter (substring)', 'e.g. Android TV',
+                rule.ClientFilter, function (v) { rules[index].ClientFilter = v; }));
+            row2.appendChild(makeField('Device Filter (substring)', 'e.g. Living Room',
+                rule.DeviceFilter, function (v) { rules[index].DeviceFilter = v; }));
+            row2.appendChild(makeField('Device ID (exact, optional)', '',
+                rule.DeviceIdFilter, function (v) { rules[index].DeviceIdFilter = v; }));
+            card.appendChild(row2);
+
+            return card;
+        }
+
+        // Render all rules
+        function renderRules() {
+            var list = document.getElementById('dpfRuleList');
+            list.innerHTML = '';
+            if (rules.length === 0) {
+                var empty = document.createElement('p');
+                empty.style.cssText = 'opacity:.4;font-size:.9em;';
+                empty.textContent = 'No rules configured. Click "+ Add rule" to get started.';
+                list.appendChild(empty);
+                return;
+            }
+            rules.forEach(function (rule, i) {
+                list.appendChild(renderCard(rule, i));
+            });
+        }
+
+        // Load configuration
+        document.getElementById('DirectPlayForceConfigPage')
+            .addEventListener('pageshow', function () {
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(PLUGIN_ID).then(function (config) {
+                    var general = document.getElementById('dpfGeneralSection');
+                    general.innerHTML = '';
+                    masterEnabled = makeToggleCard(
+                        '⚡',
+                        'Plugin enabled',
+                        'Disabling pauses all rules without losing your configuration.',
+                        config.IsEnabled !== false
+                    );
+                    general.appendChild(masterEnabled.root);
+
+                    rules = (config.DirectPlayRules || []).map(function (r) {
+                        return {
+                            Id:             r.Id             || newGuid(),
+                            IsEnabled:      r.IsEnabled      !== false,
+                            ClientFilter:   r.ClientFilter   || '',
+                            DeviceFilter:   r.DeviceFilter   || '',
+                            DeviceIdFilter: r.DeviceIdFilter || ''
+                        };
+                    });
+                    renderRules();
+                    Dashboard.hideLoadingMsg();
+                }).catch(function () {
+                    Dashboard.hideLoadingMsg();
+                    Dashboard.alert('Failed to load configuration.');
+                });
+            });
+
+        // Add rule
+        document.getElementById('dpfAddRule').addEventListener('click', function () {
+            rules.push({
+                Id:             newGuid(),
+                IsEnabled:      true,
+                ClientFilter:   '',
+                DeviceFilter:   '',
+                DeviceIdFilter: ''
+            });
+            renderRules();
+        });
+
+        // Save
+        document.getElementById('dpfConfigForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            Dashboard.showLoadingMsg();
+            ApiClient.getPluginConfiguration(PLUGIN_ID).then(function (cfg) {
+                cfg.IsEnabled = masterEnabled ? masterEnabled.checkbox.checked : true;
+                cfg.DirectPlayRules = rules;
+                return ApiClient.updatePluginConfiguration(PLUGIN_ID, cfg);
+            }).then(function (result) {
+                Dashboard.processPluginConfigurationUpdateResult(result);
+            }).catch(function () {
+                Dashboard.hideLoadingMsg();
+                Dashboard.alert('Failed to save configuration.');
+            });
+            return false;
+        });
+
+        // GUID helper
+        function newGuid() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                var r = Math.random() * 16 | 0;
+                return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+            });
+        }
+
+    })();
+    </script>
+</div>
+</body>
+</html>

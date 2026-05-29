@@ -1,0 +1,30 @@
+name: Build Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build plugin ZIP (Docker)
+        run: |
+          DOCKER_BUILDKIT=1 docker build \
+            --output type=local,dest=./dist \
+            .
+
+      - name: Show output
+        run: ls -lh dist/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DirectPlayForce-${{ github.sha }}
+          path: dist/Jellyfin.Plugin.DirectPlayForce.zip
+          retention-days: 7
