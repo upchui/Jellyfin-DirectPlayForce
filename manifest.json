@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/upchui/Jellyfin-DirectPlayForce/main/img/image.png",
     "versions": [
       {
+        "version": "1.0.0.10",
+        "changelog": "See GitHub release notes.",
+        "targetAbi": "10.9.0.0",
+        "sourceUrl": "https://github.com/upchui/Jellyfin-DirectPlayForce/releases/download/v1.0.0.10/Jellyfin.Plugin.DirectPlayForce.zip",
+        "checksum": "e3fd3e5e6fa5b8068a73a0a9f0cbcda9",
+        "timestamp": "2026-05-29T22:45:21Z"
+      },
+      {
         "version": "1.0.0.9",
         "changelog": "See GitHub release notes.",
         "targetAbi": "10.9.0.0",
