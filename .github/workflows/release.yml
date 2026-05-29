@@ -20,7 +20,9 @@ jobs:
 
       - name: Build plugin ZIP (Docker)
         run: |
+          VERSION=$(echo "${{ github.ref_name }}" | sed 's/^v//')
           DOCKER_BUILDKIT=1 docker build \
+            --build-arg VERSION="$VERSION" \
             --output type=local,dest=./dist \
             .
 

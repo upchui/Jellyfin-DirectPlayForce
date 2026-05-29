@@ -12,6 +12,8 @@
 # ─── Stage 1: Compile ─────────────────────────────────────────────────────────
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 
+ARG VERSION=1.0.0.0
+
 WORKDIR /src
 
 # Copy project file first for better layer caching on restore
@@ -25,6 +27,7 @@ RUN dotnet publish \
         --no-self-contained \
         -p:DebugType=None \
         -p:DebugSymbols=false \
+        -p:Version=${VERSION} \
         -o /out
 
 # ─── Stage 2: Package ─────────────────────────────────────────────────────────
