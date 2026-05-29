@@ -1,5 +1,7 @@
 # DirectPlayForce
 
+![DirectPlayForce Logo](img/image.png)
+
 [![Build Check](https://github.com/upchui/Jellyfin-DirectPlayForce/actions/workflows/build.yml/badge.svg)](https://github.com/upchui/Jellyfin-DirectPlayForce/actions/workflows/build.yml)
 [![Release](https://img.shields.io/github/v/release/upchui/Jellyfin-DirectPlayForce)](https://github.com/upchui/Jellyfin-DirectPlayForce/releases/latest)
 [![Jellyfin 10.9+](https://img.shields.io/badge/Jellyfin-10.9%2B-00a4dc)](https://jellyfin.org)

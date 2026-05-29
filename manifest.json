@@ -5,7 +5,8 @@
     "name": "DirectPlayForce",
     "description": "Forces direct play for configured clients, blocking all server-side transcoding.",
     "overview": "Solves EAC3 / Dolby Digital Plus stuttering and other audio codec playback issues on NVIDIA Shield / Android TV by forcing Jellyfin to deliver media files as-is via direct play — no FFmpeg, no re-encoding, zero quality loss on video or audio.",
-    "owner": "alex",
+    "owner": "theALHU - upchui",
+    "imageUrl": "https://raw.githubusercontent.com/upchui/Jellyfin-DirectPlayForce/main/img/image.png",
     "versions": [
       {
         "version": "1.0.0.7",
