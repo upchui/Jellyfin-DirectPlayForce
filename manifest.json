@@ -11,9 +11,9 @@
         "version": "1.0.0.0",
         "changelog": "Complete rewrite: direct play enforcement only. All transcoding logic removed.",
         "targetAbi": "10.9.0.0",
-        "sourceUrl": "",
-        "checksum": "",
-        "timestamp": "2026-05-29T00:00:00Z"
+        "sourceUrl": "https://github.com/upchui/Jellyfin-DirectPlayForce/releases/download/v1.0.0.1/Jellyfin.Plugin.DirectPlayForce.zip",
+        "checksum": "2bd776e575bee3752fae8e368e64600b",
+        "timestamp": "2026-05-29T08:36:34Z"
       }
     ]
   }
