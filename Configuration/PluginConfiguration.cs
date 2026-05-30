@@ -46,8 +46,13 @@ public class DirectPlayRule
 
     /// <summary>
     /// When enabled: forces direct play on the first attempt. If the player immediately
-    /// retries (within 30 s, same device + item), the second request is passed through
+    /// retries within FallbackTimeoutSeconds, the second request is passed through
     /// to Jellyfin unchanged — allowing its natural transcoding/remux decision.
     /// </summary>
     public bool SmartFallback { get; set; } = true;
+
+    /// <summary>
+    /// Seconds to wait for a player retry before SmartFallback detection expires.
+    /// </summary>
+    public int FallbackTimeoutSeconds { get; set; } = 3;
 }

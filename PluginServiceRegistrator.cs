@@ -1,5 +1,7 @@
 using Jellyfin.Plugin.DirectPlayForce.Filters;
 using MediaBrowser.Controller;
+using MediaBrowser.Controller.Events;
+using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Plugins;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,6 +19,7 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         IServerApplicationHost applicationHost)
     {
         serviceCollection.AddScoped<DirectPlayForceFilter>();
+        serviceCollection.AddScoped<IEventConsumer<PlaybackStopEventArgs>, PlaybackStopHandler>();
 
         serviceCollection.PostConfigure<MvcOptions>(options =>
         {

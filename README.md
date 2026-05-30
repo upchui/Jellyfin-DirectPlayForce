@@ -23,7 +23,7 @@ No amount of server-side transcoding to another codec produces a consistently wo
 
 - ✅ Hard-forces direct play for matched clients — all transcoding blocked
 - ✅ Per-rule client/device/device-ID filtering
-- ✅ **Smart Fallback** (on by default): first attempt forces direct play; if the player immediately retries (incompatible audio codec etc.), the second attempt lets Jellyfin decide naturally (transcode/remux)
+- ✅ **Smart Fallback** (on by default): first attempt forces direct play; if the player immediately retries, Jellyfin's natural decision takes over — and stays active for the rest of that session
 - ✅ No FFmpeg, no re-encoding, no quality loss
 - ✅ All channel configurations preserved (5.1, 7.1, Atmos)
 - ✅ Other clients are completely unaffected
@@ -85,22 +85,28 @@ No amount of server-side transcoding to another codec produces a consistently wo
 | **Device Filter** | Substring of the device name | `Living Room` |
 | **Device ID** | Exact device ID (optional, for single-device targeting) | *(leave empty)* |
 
-4. Click **Save** — takes effect on the next playback session
+4. Optionally configure **Smart Fallback** (see below)
+5. Click **Save** — takes effect on the next playback session
 
 ### Smart Fallback
 
-**Smart Fallback** (🔄) is **enabled by default** on every new rule. Disable it only if you want a hard force with no fallback at all.
+**Smart Fallback** (🔄) is **enabled by default** on every new rule. Disable it only if you want a pure hard-force with zero fallback.
 
-With Smart Fallback enabled, the plugin handles files whose codecs the client cannot play natively (e.g. DTS audio):
+With Smart Fallback, the plugin uses two phases:
 
-| Attempt | Behavior |
-|---------|----------|
-| **1st request** | Direct play forced as usual |
-| **Retry within 3 s** (player reported immediate failure) | Jellyfin's natural decision passes through — transcoding/remux proceeds |
+| Phase | Trigger | Behavior |
+|-------|---------|----------|
+| **1 — Force** | First PlaybackInfo request | Direct play forced as usual |
+| **2 — Retry detected** | Player retries within the detection window | Fallback **confirmed**: Jellyfin's natural decision (transcode/remux) passes through for the rest of the session |
+| **Session ends** | Player reports playback stopped | Fallback state cleared — next play starts fresh at Phase 1 |
+
+**Detection window** (default 3 s) is configurable **per rule** via the *Fallback detection window (seconds)* field. When a codec failure causes the player to immediately request PlaybackInfo again, the retry arrives in well under a second — so 3 s reliably distinguishes a failure retry from an intentional restart.
+
+Once fallback is confirmed, subsequent requests for the same item (e.g. changing audio tracks) **skip the direct play attempt entirely** — no more retry cycles.
 
 This means:
-- Files the client **can** play natively → forced to direct play on the first attempt ✓
-- Files the client **cannot** play (e.g. DTS audio) → first attempt fails instantly → retry → Jellyfin transcodes (e.g. DTS → AAC) ✓
+- Files the client **can** play natively → forced to direct play, no fallback triggered ✓
+- Files with an incompatible codec (e.g. DTS) → first attempt fails → retry → Jellyfin transcodes (e.g. DTS → AAC) for the rest of the session ✓
 
 ### Finding Your Client and Device Names
 
@@ -147,7 +153,13 @@ MediaSource.TranscodingUrl       = ""   ← no transcoding path offered
 
 The client has no transcoding URL to fall back to and must use direct play.
 
-**Smart Fallback** adds a second layer: after forcing direct play, the plugin records the device + item combination. If the same device requests PlaybackInfo for the same item again within 3 seconds (indicating the player rejected direct play immediately), the patch is skipped and Jellyfin's original response — including any transcoding URL — is returned unchanged.
+**Smart Fallback** adds a two-phase layer on top of the hard force:
+
+1. **Pending** — after forcing direct play, the plugin records the device + item combination with a timestamp
+2. **Confirmed** — if the player retries within the configured detection window (default 3 s), the fallback is confirmed and Jellyfin's original response passes through unchanged for the rest of the session
+3. **Reset** — when the playback session ends (player reports stop), the confirmed fallback is cleared so the next play starts fresh
+
+This eliminates retry loops when audio tracks are changed mid-session: once fallback is confirmed, every subsequent PlaybackInfo request for that item immediately uses Jellyfin's decision instead of attempting direct play again.
 
 ---
 

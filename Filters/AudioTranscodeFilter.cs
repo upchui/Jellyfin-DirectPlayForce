@@ -20,7 +20,8 @@ namespace Jellyfin.Plugin.DirectPlayForce.Filters;
 public class DirectPlayForceFilter : IAsyncActionFilter
 {
     private readonly ILogger<DirectPlayForceFilter> _logger;
-    private static readonly ConcurrentDictionary<string, DateTime> _recentlyForcedPlay = new();
+    private static readonly ConcurrentDictionary<string, DateTime> _pendingRetry = new();
+    private static readonly ConcurrentDictionary<string, byte> _confirmedFallback = new();
 
     /// <summary>Initializes a new instance of <see cref="DirectPlayForceFilter"/>.</summary>
     public DirectPlayForceFilter(ILogger<DirectPlayForceFilter> logger)
@@ -80,20 +81,30 @@ public class DirectPlayForceFilter : IAsyncActionFilter
             return;
         }
 
-        // SmartFallback: detect retry within 3 s for the same device + item
+        // SmartFallback: two-phase fallback detection
         var itemId = ExtractItemId(request.Path);
         var retryKey = $"{deviceId}:{itemId}";
         var isFallbackRetry = false;
 
-        if (matchingRule.SmartFallback && itemId is not null
-            && _recentlyForcedPlay.TryGetValue(retryKey, out var forcedAt)
-            && DateTime.UtcNow - forcedAt < TimeSpan.FromSeconds(3))
+        if (matchingRule.SmartFallback && itemId is not null)
         {
-            isFallbackRetry = true;
-            _recentlyForcedPlay.TryRemove(retryKey, out _);
-            _logger.LogInformation(
-                "DirectPlayForce: Client='{Client}' Device='{Device}' item={Item} — retry detected, passing through to Jellyfin",
-                clientName, deviceName, itemId);
+            if (_confirmedFallback.ContainsKey(retryKey))
+            {
+                isFallbackRetry = true;
+                _logger.LogInformation(
+                    "DirectPlayForce: Client='{Client}' Device='{Device}' item={Item} — confirmed fallback, passing through to Jellyfin",
+                    clientName, deviceName, itemId);
+            }
+            else if (_pendingRetry.TryGetValue(retryKey, out var forcedAt)
+                     && DateTime.UtcNow - forcedAt < TimeSpan.FromSeconds(matchingRule.FallbackTimeoutSeconds))
+            {
+                isFallbackRetry = true;
+                _pendingRetry.TryRemove(retryKey, out _);
+                _confirmedFallback[retryKey] = 0;
+                _logger.LogInformation(
+                    "DirectPlayForce: Client='{Client}' Device='{Device}' item={Item} — retry detected, fallback confirmed",
+                    clientName, deviceName, itemId);
+            }
         }
 
         // Execute the action, then patch the response
@@ -108,7 +119,13 @@ public class DirectPlayForceFilter : IAsyncActionFilter
         ForceDirectPlay(executedContext, matchingRule, clientName, deviceName);
 
         if (matchingRule.SmartFallback && itemId is not null)
-            _recentlyForcedPlay[retryKey] = DateTime.UtcNow;
+            _pendingRetry[retryKey] = DateTime.UtcNow;
+    }
+
+    internal static void ClearFallback(string key)
+    {
+        _confirmedFallback.TryRemove(key, out _);
+        _pendingRetry.TryRemove(key, out _);
     }
 
     // ── Patch PlaybackInfoResponse to force direct play ───────────────────

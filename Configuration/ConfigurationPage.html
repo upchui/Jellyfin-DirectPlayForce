@@ -193,6 +193,20 @@
             row3.appendChild(smartTgl.root);
             card.appendChild(row3);
 
+            // Row 4: FallbackTimeoutSeconds input
+            var row4 = document.createElement('div');
+            row4.style.cssText = 'margin-top:8px;';
+            row4.appendChild(makeField(
+                'Fallback detection window (seconds)',
+                '3',
+                String(rule.FallbackTimeoutSeconds != null ? rule.FallbackTimeoutSeconds : 3),
+                function (v) {
+                    var n = parseInt(v, 10);
+                    rules[index].FallbackTimeoutSeconds = (isNaN(n) || n < 1) ? 3 : n;
+                }
+            ));
+            card.appendChild(row4);
+
             return card;
         }
 
@@ -234,7 +248,8 @@
                             ClientFilter:          r.ClientFilter   || '',
                             DeviceFilter:          r.DeviceFilter   || '',
                             DeviceIdFilter:        r.DeviceIdFilter || '',
-                            SmartFallback: r.SmartFallback === true
+                            SmartFallback:            r.SmartFallback === true,
+                            FallbackTimeoutSeconds:   r.FallbackTimeoutSeconds != null ? r.FallbackTimeoutSeconds : 3
                         };
                     });
                     renderRules();
@@ -253,7 +268,8 @@
                 ClientFilter:          '',
                 DeviceFilter:          '',
                 DeviceIdFilter:        '',
-                SmartFallback: true
+                SmartFallback:          true,
+                FallbackTimeoutSeconds: 3
             });
             renderRules();
         });
