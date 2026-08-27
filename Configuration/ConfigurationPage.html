@@ -59,6 +59,7 @@
 
         var rules = [];
         var masterEnabled = null;
+        var excludedIpTextarea = null;
 
         // Styles
         var CARD_OFF = 'display:flex;align-items:center;padding:14px 16px;border-radius:6px;cursor:pointer;margin:0;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);';
@@ -241,6 +242,28 @@
                     );
                     general.appendChild(masterEnabled.root);
 
+                    var ipWrap = document.createElement('div');
+                    ipWrap.style.cssText = 'margin-top:10px;';
+
+                    var ipLabel = document.createElement('div');
+                    ipLabel.style.cssText = 'font-size:.75em;opacity:.55;margin-bottom:4px;';
+                    ipLabel.textContent = 'Excluded IP ranges';
+                    ipWrap.appendChild(ipLabel);
+
+                    excludedIpTextarea = document.createElement('textarea');
+                    excludedIpTextarea.rows = 4;
+                    excludedIpTextarea.style.cssText = INPUT_S + 'resize:vertical;font-family:monospace;';
+                    excludedIpTextarea.placeholder = '192.168.1.0/24';
+                    excludedIpTextarea.value = (config.ExcludedIpRanges || []).join('\n');
+                    ipWrap.appendChild(excludedIpTextarea);
+
+                    var ipHint = document.createElement('div');
+                    ipHint.style.cssText = 'font-size:.75em;opacity:.45;margin-top:4px;';
+                    ipHint.textContent = 'One entry per line. Formats: CIDR (192.168.1.0/24), single IP (192.168.1.5), or range (192.168.1.10-192.168.1.50). IPv4 and IPv6. Requests from these IPs are never forced to direct play, even when a rule matches.';
+                    ipWrap.appendChild(ipHint);
+
+                    general.appendChild(ipWrap);
+
                     rules = (config.DirectPlayRules || []).map(function (r) {
                         return {
                             Id:                    r.Id             || newGuid(),
@@ -281,6 +304,11 @@
             ApiClient.getPluginConfiguration(PLUGIN_ID).then(function (cfg) {
                 cfg.IsEnabled = masterEnabled ? masterEnabled.checkbox.checked : true;
                 cfg.DirectPlayRules = rules;
+                cfg.ExcludedIpRanges = excludedIpTextarea
+                    ? excludedIpTextarea.value.split(/[\r\n,]+/)
+                        .map(function (s) { return s.trim(); })
+                        .filter(function (s) { return s.length > 0; })
+                    : [];
                 return ApiClient.updatePluginConfiguration(PLUGIN_ID, cfg);
             }).then(function (result) {
                 Dashboard.processPluginConfigurationUpdateResult(result);

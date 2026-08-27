@@ -24,6 +24,7 @@ No amount of server-side transcoding to another codec produces a consistently wo
 - ✅ Hard-forces direct play for matched clients — all transcoding blocked
 - ✅ Per-rule client/device/device-ID filtering
 - ✅ **Smart Fallback** (on by default): first attempt forces direct play; if the player immediately retries, Jellyfin's natural decision takes over — and stays active for the rest of that session
+- ✅ **Global IP range exclusion** — clients in excluded IP ranges are never forced, even when a rule matches
 - ✅ No FFmpeg, no re-encoding, no quality loss
 - ✅ All channel configurations preserved (5.1, 7.1, Atmos)
 - ✅ Other clients are completely unaffected
@@ -87,6 +88,20 @@ No amount of server-side transcoding to another codec produces a consistently wo
 
 4. Optionally configure **Smart Fallback** (see below)
 5. Click **Save** — takes effect on the next playback session
+
+### Excluded IP Ranges
+
+The **Excluded IP ranges** field in the general settings globally exempts clients by IP: requests from these addresses pass through to Jellyfin untouched — **exclusion always wins over every rule**. One entry per line (commas also work):
+
+| Format | Example |
+|--------|---------|
+| CIDR | `192.168.1.0/24` |
+| Single IP | `192.168.1.5` |
+| Range | `192.168.1.10-192.168.1.50` |
+
+IPv4 and IPv6 are both supported. Invalid entries are skipped with a warning in the Jellyfin log; the remaining entries still apply. Changes take effect on save — no restart needed.
+
+> **Reverse proxy note:** If Jellyfin runs behind a reverse proxy, configure the proxy under **Dashboard → Networking → Known proxies** so the plugin sees the real client IP instead of the proxy's address.
 
 ### Smart Fallback
 

@@ -16,6 +16,14 @@ public class PluginConfiguration : BasePluginConfiguration
     /// the plugin forces direct play and blocks all transcoding for that session.
     /// </summary>
     public DirectPlayRule[] DirectPlayRules { get; set; } = Array.Empty<DirectPlayRule>();
+
+    /// <summary>
+    /// Client IP addresses/ranges globally excluded from direct play forcing.
+    /// Requests from these IPs pass through untouched even when a rule matches.
+    /// Accepted formats per entry: CIDR ("192.168.1.0/24"), single IP ("192.168.1.5"),
+    /// range ("192.168.1.10-192.168.1.50"). IPv4 and IPv6 are supported.
+    /// </summary>
+    public string[] ExcludedIpRanges { get; set; } = Array.Empty<string>();
 }
 
 /// <summary>

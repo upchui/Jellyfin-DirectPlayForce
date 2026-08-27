@@ -51,6 +51,17 @@ public class DirectPlayForceFilter : IAsyncActionFilter
             return;
         }
 
+        // Global IP exclusion: excluded client IPs are never forced — pass through untouched
+        var remoteIp = context.HttpContext.Connection.RemoteIpAddress;
+        if (config.ExcludedIpRanges.Length > 0
+            && IpRangeMatcher.IsExcluded(remoteIp, config.ExcludedIpRanges, _logger))
+        {
+            _logger.LogInformation(
+                "DirectPlayForce: client IP {Ip} is in an excluded range — passing through", remoteIp);
+            await next().ConfigureAwait(false);
+            return;
+        }
+
         // Parse client identity from the Authorization header
         var authHeader = request.Headers["X-Emby-Authorization"].ToString();
         if (string.IsNullOrEmpty(authHeader))
